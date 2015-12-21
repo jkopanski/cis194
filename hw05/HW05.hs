@@ -25,8 +25,8 @@ getSecret o m = do
 
 decryptWithKey :: ByteString -> FilePath -> IO ()
 decryptWithKey key f = do
-  file <- BS.readFile f
-  putStrLn $ C.unpack $ BS.pack $ zipWith (xor) (BS.unpack file) $ concat $ repeat (BS.unpack key)
+  file <- BS.readFile $ f ++ ".enc"
+  BS.writeFile f $ BS.pack $ zipWith (xor) (BS.unpack file) $ concat $ repeat (BS.unpack key)
 
 -- Exercise 3 -----------------------------------------
 
