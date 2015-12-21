@@ -8,6 +8,7 @@ import System.Environment (getArgs)
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Strict as Map
+import qualified Data.ByteString.Lazy.Char8 as C
 
 import Parser
 import Data.Bits
@@ -25,7 +26,7 @@ getSecret o m = do
 decryptWithKey :: ByteString -> FilePath -> IO ()
 decryptWithKey key f = do
   file <- BS.readFile f
-  putStrLn $ zipWith (xor) (BS.unpack file) $ repeat (BS.unpack key)
+  putStrLn $ C.unpack $ BS.pack $ zipWith (xor) (BS.unpack file) $ concat $ repeat (BS.unpack key)
 
 -- Exercise 3 -----------------------------------------
 
@@ -72,14 +73,14 @@ doEverything dog1 dog2 trans vict fids out = do
       case mids of
         Nothing  -> error "No ids"
         Just ids -> do
-          let flow = getFlow ts       
+          let flow = getFlow ts
           writeJSON out (undoTs flow ids)
           return (getCriminal flow)
 
 main :: IO ()
 main = do
   args <- getArgs
-  crim <- 
+  crim <-
     case args of
       dog1:dog2:trans:vict:ids:out:_ ->
           doEverything dog1 dog2 trans vict ids out
