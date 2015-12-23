@@ -13,6 +13,8 @@ import qualified Data.ByteString.Lazy.Char8 as C
 import Parser
 import Data.Bits
 
+import Data.Functor ((<$>))
+
 -- Exercise 1 -----------------------------------------
 
 getSecret :: FilePath -> FilePath -> IO ByteString
@@ -31,12 +33,28 @@ decryptWithKey key f = do
 -- Exercise 3 -----------------------------------------
 
 parseFile :: FromJSON a => FilePath -> IO (Maybe a)
-parseFile = undefined
+parseFile f = do
+  tran <- BS.readFile f
+  return $ decode tran
 
 -- Exercise 4 -----------------------------------------
+-- shamelessly copoied from Mattias Jakobsson
+-- https://github.com/mjakob/cis194/blob/master/HW05/HW05.hs
 
 getBadTs :: FilePath -> FilePath -> IO (Maybe [Transaction])
-getBadTs = undefined
+getBadTs vicsPth tssPth = do
+  vics <- parseFile vicsPth
+  let isBadTs :: Transaction -> Bool
+      isBadTs (Transaction { tid = x }) = elem x vics
+  tss <- parseFile tssPth
+  return $ filter isBadTs <$> tss
+--getBadTs :: FilePath -> FilePath -> IO (Maybe [Transaction])
+--getBadTs fvict ftran = do
+--  Just victims <- parseFile fvict
+--  transactions <- parseFile ftran
+--  let isBadTs :: Transaction -> Bool
+--      isBadTs (Transaction { tid = x }) = x `elem` victims
+--  return $ filter isBadTs <$> transactions
 
 -- Exercise 5 -----------------------------------------
 
