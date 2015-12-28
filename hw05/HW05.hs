@@ -9,7 +9,7 @@ import System.Environment (getArgs)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString.Lazy.Char8 as C
-
+import qualified Data.List as List
 import Parser
 import Data.Bits
 
@@ -43,7 +43,7 @@ parseFile f = do
 
 getBadTs :: FilePath -> FilePath -> IO (Maybe [Transaction])
 getBadTs vicsPth tssPth = do
-  vics <- parseFile vicsPth
+  Just vics <- parseFile vicsPth :: IO (Maybe [TId])
   let isBadTs :: Transaction -> Bool
       isBadTs (Transaction { tid = x }) = elem x vics
   tss <- parseFile tssPth
@@ -58,23 +58,56 @@ getBadTs vicsPth tssPth = do
 
 -- Exercise 5 -----------------------------------------
 
+getStep :: Transaction -> Map String Integer
+getStep t = Map.union (Map.singleton (from t) (-(amount t))) (Map.singleton (to t) (amount t))
+
 getFlow :: [Transaction] -> Map String Integer
-getFlow = undefined
+getFlow []     = Map.empty
+getFlow (t:ts) = Map.unionWith (+) (getStep t) (getFlow ts)
 
 -- Exercise 6 -----------------------------------------
 
 getCriminal :: Map String Integer -> String
-getCriminal = undefined
+getCriminal m = head $ Map.keys $ Map.filter (== v) m
+  where v = maximum $ Map.elems m
 
 -- Exercise 7 -----------------------------------------
+sortMap :: Map String Integer -> [(String, Integer)]
+sortMap m = List.sortBy (\ (_, v1) (_, v2) -> v2 `compare` v1) $ Map.toList m
+
+payers :: Map String Integer -> [(String, Integer)]
+payers m = sortMap $ Map.filter (< 0) m
+
+payees :: Map String Integer -> [(String, Integer)]
+payees m = sortMap $ Map.filter (> 0) m
 
 undoTs :: Map String Integer -> [TId] -> [Transaction]
-undoTs = undefined
+undoTs m ts
+  | Map.null m  = []
+  | amount <= 0 = []
+  | ts == []    = []
+  | otherwise   = tr : (undoTs new_map $ tail ts)
+  where
+    payer = Map.foldrWithKey
+      (\ name money (rname, rmoney) ->
+        if rmoney < money
+          then (name, money)
+          else (rname, rmoney)) ("", 0) m
+    payee = Map.foldrWithKey
+      (\ name money (rname, rmoney) ->
+        if rmoney > money
+          then (name, money)
+          else (rname, rmoney)) ("", 0) m
+    amount = min (snd payer) (negate $ snd payee)
+    tr = Transaction (fst payer) (fst payee) amount $ head ts
+    new_map = Map.filter (/= 0)
+            $ Map.adjust (amount +) (fst payee)
+            $ Map.adjust ((-amount) +) (fst payer) m
 
 -- Exercise 8 -----------------------------------------
 
 writeJSON :: ToJSON a => FilePath -> a -> IO ()
-writeJSON = undefined
+writeJSON file ts = BS.writeFile file $ encode ts
 
 -- Exercise 9 -----------------------------------------
 
