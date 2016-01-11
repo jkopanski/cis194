@@ -47,28 +47,34 @@ sIterate :: (a -> a) -> a -> Stream a
 sIterate f x = Cons x (sIterate f $ f x)
 
 sInterleave :: Stream a -> Stream a -> Stream a
-sInterleave (Cons _ _) _ = undefined
+sInterleave (Cons a b) c = Cons a $ sInterleave c b
 
 sTake :: Int -> Stream a -> [a]
-sTake = undefined
+sTake n a = go 0 n a
+  where go :: Int -> Int -> Stream a -> [a]
+        go acc k (Cons x y)
+          | acc == k = []
+          | otherwise = x:(go (acc + 1) k y)
 
 -- Exercise 6 -----------------------------------------
 
 nats :: Stream Integer
-nats = undefined
+nats = sIterate (1 +) 0
 
 ruler :: Stream Integer
-ruler = undefined
+ruler = sInterleave (sRepeat 0) $ sInterleave (sRepeat 1) $ sInterleave (sRepeat 2) $ sInterleave (sRepeat 3) (sRepeat 4)
 
 -- Exercise 7 -----------------------------------------
 
 -- | Implementation of C rand
 rand :: Int -> Stream Int
-rand = undefined
+rand r = sIterate gen $ gen r
+  where gen :: Int -> Int
+        gen n = ((1103515245 * n) + 12345) `mod`2147483648
 
 -- Exercise 8 -----------------------------------------
 
-{- Total Memory in use: ??? MB -}
+{- Total Memory in use: 190 MB -}
 minMaxSlow :: [Int] -> Maybe (Int, Int)
 minMaxSlow [] = Nothing   -- no min or max if there are no elements
 minMaxSlow xs = Just (minimum xs, maximum xs)
