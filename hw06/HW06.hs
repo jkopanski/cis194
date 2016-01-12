@@ -81,14 +81,16 @@ minMaxSlow xs = Just (minimum xs, maximum xs)
 
 -- Exercise 9 -----------------------------------------
 
-{- Total Memory in use: ??? MB -}
+{- Total Memory in use: 2 MB -}
 minMax :: [Int] -> Maybe (Int, Int)
 minMax []     = Nothing
 minMax (x:xs) = go xs x x
   where go :: [Int] -> Int -> Int -> Maybe (Int, Int)
         go []     mi ma = Just (mi, ma)
-        go (y:ys) mi ma = go ys (if y < mi then y else mi)
-                                (if y > ma then y else ma)
+        go (y:ys) mi ma
+          | y < mi = y < mi `seq` go ys y  ma
+          | y > ma = y > ma `seq` go ys mi y
+          | otherwise = go ys mi ma
 
 main :: IO ()
 main = print $ minMax $ sTake 1000000 $ rand 7666532
