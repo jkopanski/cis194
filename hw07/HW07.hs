@@ -1,4 +1,4 @@
-{-# LANGUAGE MonadComprehensions, RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts, MonadComprehensions, RecordWildCards #-}
 {-# OPTIONS_GHC -Wall #-}
 module HW07 where
 
@@ -18,43 +18,56 @@ import qualified Data.Vector as V
 -- Exercise 1 -----------------------------------------
 
 liftM :: Monad m => (a -> b) -> m a -> m b
-liftM = undefined
+liftM f m = m >>= \a -> return (f a)
 
 swapV :: Int -> Int -> Vector a -> Maybe (Vector a)
-swapV = undefined
+swapV j k v = liftM2 sub (v !? j) (v !? k)
+  where sub x y = v // [(j,y),(k,x)]
 
 -- Exercise 2 -----------------------------------------
 
 mapM :: Monad m => (a -> m b) -> [a] -> m [b]
-mapM = undefined
+mapM f = sequence . fmap f
 
 getElts :: [Int] -> Vector a -> Maybe [a]
-getElts = undefined
+getElts i v = mapM (v !?) i
 
 -- Exercise 3 -----------------------------------------
 
 type Rnd a = Rand StdGen a
 
 randomElt :: Vector a -> Rnd (Maybe a)
-randomElt = undefined
+randomElt v = (v !?) <$> getRandomR (0, pred $ V.length v)
 
 -- Exercise 4 -----------------------------------------
 
+randVec :: Monad m => Int -> m a -> m (Vector a)
+randVec n = liftM V.fromList . sequence . replicate n
+
 randomVec :: Random a => Int -> Rnd (Vector a)
-randomVec = undefined
+randomVec n = randVec n $ getRandom
+
 
 randomVecR :: Random a => Int -> (a, a) -> Rnd (Vector a)
-randomVecR = undefined
+randomVecR n p = randVec n $ getRandomR p
 
 -- Exercise 5 -----------------------------------------
 
 shuffle :: Vector a -> Rnd (Vector a)
-shuffle = undefined
+shuffle v = foldM randomSwap v $ reverse [1..pred $ V.length v]
+  where randomSwap w i = getRandomR(0,i) >>= swap w i
+        swap w i j = return $ w // [(i, w ! j), (j, w ! i)]
 
 -- Exercise 6 -----------------------------------------
 
-partitionAt :: Ord a => Vector a -> Int -> (Vector a, a, Vector a)
-partitionAt = undefined
+partitionAt :: Ord a => Vector a -> a -> (Vector a, a, Vector a)
+partitionAt v n = (less, V.head greater, V.drop 1 greater)
+  where
+    (less, more) = V.unstablePartition (< n) v
+    minId = V.minIndex more
+    min   = V.minimum more
+    first = more V.! 0
+    greater = more V.// [(0,min), (minId,first)]
 
 -- Exercise 7 -----------------------------------------
 
@@ -65,12 +78,28 @@ quicksort (x:xs) = quicksort [ y | y <- xs, y < x ]
                    <> (x : quicksort [ y | y <- xs, y >= x ])
 
 qsort :: Ord a => Vector a -> Vector a
-qsort = undefined
+qsort v
+  | v == V.empty = V.empty
+  | otherwise = qsort [ y | y <- rest, y < first]
+                <> (V.cons first $ qsort [ y | y <- rest, y >= first])
+    where
+      (first, rest) = (V.head v, V.drop 1 v)
 
 -- Exercise 8 -----------------------------------------
 
-qsortR :: Ord a => Vector a -> Rnd (Vector a)
-qsortR = undefined
+qsortR :: (Random a, Ord a) => Vector a -> Rnd (Vector a)
+-- qsortR = undefined
+qsortR v
+  | v == V.empty = return V.empty
+  | otherwise =
+    getRandomR (min, max)   >>=
+    return . partitionAt v  >>= \(first, pivot, last) ->
+    [ (V.++) a $ V.cons pivot b | a <- qsortR first
+                                , b <- qsortR last ]
+    -- return $ first V.++ (V.cons pivot last)
+  where
+    min = V.minimum v
+    max = V.maximum v
 
 -- Exercise 9 -----------------------------------------
 
@@ -138,7 +167,7 @@ repl s@State{..} | money <= 0  = putStrLn "You ran out of money!"
                   _ | c13 > c23 -> repl $ State (m + amt) d'
                     | c13 < c23 -> repl $ State (m - amt) d'
                     | otherwise -> war (State m d') amt
-              _ -> deckEmpty 
+              _ -> deckEmpty
 
 main :: IO ()
 main = evalRandIO newDeck >>= repl . State 100
