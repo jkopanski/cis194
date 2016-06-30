@@ -96,7 +96,6 @@ qsortR v
     return . partitionAt v  >>= \(first, pivot, last) ->
     [ (V.++) a $ V.cons pivot b | a <- qsortR first
                                 , b <- qsortR last ]
-    -- return $ first V.++ (V.cons pivot last)
   where
     min = V.minimum v
     max = V.maximum v
@@ -104,8 +103,22 @@ qsortR v
 -- Exercise 9 -----------------------------------------
 
 -- Selection
-select :: Ord a => Int -> Vector a -> Rnd (Maybe a)
-select = undefined
+select :: (Random a, Ord a) => Int -> Vector a -> Rnd (Maybe a)
+-- select = undefined
+select i v
+  | i < 0              = return Nothing
+  | i > V.length v - 1 = return Nothing
+  | otherwise =
+    getRandomR (min, max) >>=
+    return . partitionAt v >>= \(left, pivot,  right) ->
+    let l = V.length left in
+      case () of _
+                  | i < l     -> select i left
+                  | i == l    -> return $ Just pivot
+                  | otherwise -> select (i - l - 1) right
+    where
+      min = V.minimum v
+      max = V.maximum v
 
 -- Exercise 10 ----------------------------------------
 
